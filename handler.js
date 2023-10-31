@@ -5,18 +5,22 @@ const getPatientEnrolledProgram = require('./mongo/mongo.js').getPatientEnrolled
 
 AWS.config.update({ region: 'us-west-2' });
 
-const encrypted = process.env['MONGODB_CLUSTER_URI_TEST'];
-// TEST when using decrypted uri
-// decrypt uri once
-let encrypted_uri = 'mongodb://localhost:27017/ShareCare';
-
-//inboundPhoneNumber is patient's phone number
-var inboundPhoneNumber = null;
+let encrypted;
+const env = process.env['ENV'];
+if (env === 'production') {
+  encrypted = process.env['MONGODB_CLUSTER_URI'];
+} else if (env === 'test') {
+  encrypted = process.env['MONGODB_CLUSTER_URI_TEST'];
+} else if (env === 'dev') {
+  encrypted = process.env['MONGODB_CLUSTER_URI_DEV'];
+} else if (env === 'local') {
+  encrypted = 'mongodb://localhost:27017/ShareCare';
+}
 
 module.exports.hello = async (event, context, callback) => {
   // exports.handler = (event, context, callback) => {
-  if (encrypted_uri) {
-    processEvent(event, context, callback);
+  if (env === 'local') {
+    processEvent(event, context, callback, encrypted);
   } else {
     // Decrypt code should run once and variables stored outside of the
     // function handler so that these are decrypted once per container
@@ -26,57 +30,47 @@ module.exports.hello = async (event, context, callback) => {
       if (err) {
         return callback(err);
       }
-      encrypted_uri = data.Plaintext.toString('ascii');
-      console.log('=> encrypted_uri', encrypted_uri);
-      // processEvent(event, context, callback);
+      const decryptUri = data.Plaintext.toString('ascii');
+      console.log('=> decryptUri', decryptUri);
+      processEvent(event, context, callback, decryptUri);
     });
   }
 };
 
-function processEvent(event, context, callback) {
+function processEvent(event, context, callback, uri) {
   console.log('=> connecting to database', JSON.stringify(event));
-  inboundPhoneNumber = event['Details']['Parameters']['CustomerNumber'];
-  if (inboundPhoneNumber != undefined) {
-    if (inboundPhoneNumber.length >= 10) {
-      inboundPhoneNumber = inboundPhoneNumber.slice(inboundPhoneNumber.length - 10, inboundPhoneNumber.length)
-    }
+  const phoneNumber = event['Details']['ContactData']['CustomerEndpoint']['Address'];
+  if (phoneNumber != undefined && phoneNumber.length >= 10) {
+    const newNumber = phoneNumber.slice(phoneNumber.length - 10, phoneNumber.length)
+    queryPatient(newNumber, callback, uri)
+  } else {
+    errorOutput(callback, { query: 'phone number not recognized' })
   }
-  queryPatient(inboundPhoneNumber, callback)
 }
 
-async function queryPatient(inboundPhoneNumber, callback) {
-  const person = await getPatient(encrypted_uri, inboundPhoneNumber);
-  console.log('=> queryPatient', person);
+async function queryPatient(phoneNumber, callback, uri) {
+  const person = await getPatient(uri, phoneNumber);
   if (person.length > 0) {
     var aPerson = person[0]
     if (aPerson.profile.firstName != null && aPerson.profile.lastName != null) {
       let language = aPerson.profile.language
       const organizationId = aPerson.role[0].organizationId;
       const roleId = aPerson.role[0].roleId;
-
-      const pId = aPerson._id;
-      var ep = await getPatientEnrolledProgram(encrypted_uri, pId);
-      console.log('=> query enrolled program', ep);
-
+      const ep = await getPatientEnrolledProgram(uri, aPerson._id);
+      var enrolledProgramId = null
       if (ep != undefined && ep.length > 0) {
-        callback(null, {
-          language,
-          name: aPerson.profile.firstName + " " + aPerson.profile.lastName,
-          patientId: aPerson._id,
-          roleId,
-          enrolledProgramId: ep[0]._id,
-          organizationId
-        })
-      } else {
-        callback(null, {
-          language,
-          name: aPerson.profile.firstName + " " + aPerson.profile.lastName,
-          patientId: aPerson._id,
-          roleId,
-          enrolledProgramId: null,
-          organizationId
-        })
+        enrolledProgramId = ep[0]._id;
       }
+      const callbackData = {
+        language,
+        name: aPerson.profile.firstName + " " + aPerson.profile.lastName,
+        patientId: aPerson._id,
+        roleId,
+        enrolledProgramId,
+        organizationId
+      }
+      console.log('=> callbackData', callbackData);
+      callback(null, callbackData);
       return
     } else {
       errorOutput(callback, { query: 'an error occurred when queryPatient, there is no patient name' })
@@ -87,5 +81,5 @@ async function queryPatient(inboundPhoneNumber, callback) {
 }
 
 function errorOutput(callback, err) {
-  callback(null, { err, "name": inboundPhoneNumber });
+  callback(null, { err });
 }

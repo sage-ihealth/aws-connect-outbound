@@ -1,0 +1,43 @@
+{
+  "Details": {
+      "ContactData": {
+          "Attributes": {},
+          "AwsRegion": "us-west-2",
+          "Channel": "VOICE",
+          "ContactId": "321fd3b2-fbc2-4744-a4bd-8307f84954b6",
+          "CustomerEndpoint": {
+              "Address": "+13528713114",
+              "Type": "TELEPHONE_NUMBER"
+          },
+          "CustomerId": null,
+          "Description": null,
+          "InitialContactId": "321fd3b2-fbc2-4744-a4bd-8307f84954b6",
+          "InitiationMethod": "OUTBOUND",
+          "InstanceARN": "arn:aws:connect:us-west-2:358153424697:instance/8c0a7de7-a0d8-4ca2-858c-927fb6c881b0",
+          "LanguageCode": "en-US",
+          "MediaStreams": {
+              "Customer": {
+                  "Audio": null
+              }
+          },
+          "Name": null,
+          "PreviousContactId": "321fd3b2-fbc2-4744-a4bd-8307f84954b6",
+          "Queue": {
+              "ARN": "arn:aws:connect:us-west-2:358153424697:instance/8c0a7de7-a0d8-4ca2-858c-927fb6c881b0/queue/5895b6e9-3bb7-4b77-b845-920280f897a6",
+              "Name": "EdwardSageQ",
+              "OutboundCallerId": {
+                  "Address": "+12076138655",
+                  "Type": "TELEPHONE_NUMBER"
+              }
+          },
+          "References": {},
+          "RelatedContactId": null,
+          "SystemEndpoint": {
+              "Address": "+12076138655",
+              "Type": "TELEPHONE_NUMBER"
+          }
+      },
+      "Parameters": {}
+  },
+  "Name": "ContactFlowEvent"
+}
